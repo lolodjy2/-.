@@ -2,114 +2,511 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>𝐿𝑂𝐿𝑂𝐷𝐽𝑌 𝐴𝐼 — V3</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>𝐿𝑂𝐿𝑂𝐷𝐽𝑌 𝐴𝐼 — V4</title>
+
 <style>
-*{box-sizing:border-box}body{margin:0;background:#07090d;color:#fff;font-family:Arial,sans-serif}
-header{padding:18px;border-bottom:1px solid #202630;background:#0b0e13;display:flex;justify-content:space-between}.logo{font-size:22px;font-weight:900}.logo span{color:#4da3ff}.mode{color:#28d17c;font-size:11px}
-main{width:94%;max-width:1100px;margin:22px auto}.card{background:#0d1117;border:1px solid #202630;border-radius:16px;padding:18px;margin-bottom:16px}
-.title{font-size:12px;color:#8994a3;font-weight:900;text-transform:uppercase;margin-bottom:14px}
-.grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}label{display:block;color:#778290;font-size:11px;margin-bottom:6px}
-select{width:100%;padding:12px;background:#151a21;color:#fff;border:1px solid #29313c;border-radius:9px}
-.group{margin-top:15px}.tfbox{display:flex;gap:7px;flex-wrap:wrap}.tf{border:1px solid #29313c;background:#12171e;color:#aeb7c4;border-radius:8px;padding:8px 10px;font-size:11px;font-weight:800}.tf.active{background:#1769aa;color:#fff;border-color:#4da3ff}
-.analysis{display:grid;grid-template-columns:1fr 1fr;gap:16px}.price{font-size:30px;font-weight:900;margin-bottom:16px}
-.metrics{display:grid;grid-template-columns:1fr 1fr;gap:8px}.metric{background:#11161d;padding:12px;border-radius:9px}.metric small{display:block;color:#697584;margin-bottom:5px}.metric strong{font-size:13px}
-.signalbox{text-align:center;min-height:300px;display:flex;flex-direction:column;justify-content:center;align-items:center}.signal{font-size:48px;font-weight:1000;margin:12px}.call{color:#28d17c}.put{color:#ff5364}.wait{color:#f1c75b}
-.conf{font-size:24px;font-weight:900}.bar{width:85%;max-width:300px;height:8px;background:#222831;border-radius:20px;margin:10px}.fill{height:100%;width:0;background:#4da3ff;transition:.4s}
-.btn{margin-top:15px;padding:13px 20px;border:0;border-radius:9px;background:#1769aa;color:#fff;font-weight:900}.notice{font-size:11px;color:#687484;line-height:1.5;margin-top:13px}
-.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}.stat{background:#11161d;padding:12px;border-radius:9px}.stat small{display:block;color:#687484}.stat strong{font-size:20px}
-table{width:100%;border-collapse:collapse}th,td{font-size:11px;padding:9px;border-bottom:1px solid #202630;text-align:left}th{color:#687484}
-.best{border:1px solid #28d17c;background:#0c1814}.best strong{color:#28d17c}
-@media(max-width:720px){.grid,.analysis{grid-template-columns:1fr}}@media(max-width:450px){.metrics{grid-template-columns:1fr}.stats{grid-template-columns:1fr 1fr}}
+*{box-sizing:border-box}
+
+body{
+    margin:0;
+    background:#07090d;
+    color:#fff;
+    font-family:Arial,sans-serif;
+}
+
+header{
+    padding:18px;
+    background:#0b0e13;
+    border-bottom:1px solid #202630;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+}
+
+.logo{
+    font-size:22px;
+    font-weight:900;
+}
+
+.logo span{
+    color:#4da3ff;
+}
+
+.mode{
+    color:#28d17c;
+    font-size:10px;
+    font-weight:bold;
+}
+
+main{
+    width:94%;
+    max-width:1100px;
+    margin:20px auto;
+}
+
+.card{
+    background:#0d1117;
+    border:1px solid #202630;
+    border-radius:16px;
+    padding:18px;
+    margin-bottom:16px;
+}
+
+.title{
+    color:#8994a3;
+    font-size:12px;
+    font-weight:900;
+    text-transform:uppercase;
+    margin-bottom:15px;
+}
+
+.grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:15px;
+}
+
+label{
+    display:block;
+    color:#778290;
+    font-size:11px;
+    margin-bottom:6px;
+}
+
+select{
+    width:100%;
+    padding:12px;
+    background:#151a21;
+    color:#fff;
+    border:1px solid #29313c;
+    border-radius:9px;
+}
+
+.group{
+    margin-top:16px;
+}
+
+.tfbox{
+    display:flex;
+    gap:7px;
+    flex-wrap:wrap;
+}
+
+.tf{
+    border:1px solid #29313c;
+    background:#12171e;
+    color:#aeb7c4;
+    border-radius:8px;
+    padding:8px 10px;
+    font-size:11px;
+    font-weight:800;
+}
+
+.tf.active{
+    background:#1769aa;
+    color:#fff;
+    border-color:#4da3ff;
+}
+
+.analysis{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:16px;
+}
+
+.price{
+    font-size:30px;
+    font-weight:900;
+    margin-bottom:16px;
+}
+
+.metrics{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:8px;
+}
+
+.metric{
+    background:#11161d;
+    padding:12px;
+    border-radius:9px;
+}
+
+.metric small{
+    display:block;
+    color:#697584;
+    margin-bottom:5px;
+}
+
+.metric strong{
+    font-size:13px;
+}
+
+.signalbox{
+    min-height:300px;
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
+    align-items:center;
+    text-align:center;
+}
+
+.signal{
+    font-size:48px;
+    font-weight:1000;
+    margin:15px;
+}
+
+.call{
+    color:#28d17c;
+}
+
+.put{
+    color:#ff5364;
+}
+
+.wait{
+    color:#f1c75b;
+}
+
+.conf{
+    font-size:24px;
+    font-weight:900;
+}
+
+.bar{
+    width:85%;
+    max-width:300px;
+    height:8px;
+    background:#222831;
+    border-radius:20px;
+    margin:10px;
+}
+
+.fill{
+    height:100%;
+    width:0%;
+    background:#4da3ff;
+    transition:.4s;
+}
+
+.btn{
+    margin-top:15px;
+    padding:13px 20px;
+    border:0;
+    border-radius:9px;
+    background:#1769aa;
+    color:#fff;
+    font-weight:900;
+}
+
+.btn.secondary{
+    background:#151a21;
+    border:1px solid #29313c;
+}
+
+.notice{
+    color:#687484;
+    font-size:11px;
+    line-height:1.5;
+    margin-top:12px;
+}
+
+.stats{
+    display:grid;
+    grid-template-columns:repeat(4,1fr);
+    gap:8px;
+}
+
+.stat{
+    background:#11161d;
+    padding:12px;
+    border-radius:9px;
+}
+
+.stat small{
+    display:block;
+    color:#687484;
+}
+
+.stat strong{
+    font-size:20px;
+}
+
+table{
+    width:100%;
+    border-collapse:collapse;
+}
+
+th,td{
+    padding:9px;
+    font-size:11px;
+    text-align:left;
+    border-bottom:1px solid #202630;
+}
+
+th{
+    color:#687484;
+}
+
+.best{
+    border:1px solid #28d17c;
+    background:#0c1814;
+    margin-top:12px;
+}
+
+.best strong{
+    color:#28d17c;
+    display:block;
+    margin-top:6px;
+}
+
+.badge{
+    background:#151a21;
+    color:#9da8b5;
+    padding:5px 8px;
+    border-radius:7px;
+    font-size:10px;
+    font-weight:800;
+}
+
+@media(max-width:720px){
+    .grid,
+    .analysis{
+        grid-template-columns:1fr;
+    }
+}
+
+@media(max-width:450px){
+    .metrics{
+        grid-template-columns:1fr;
+    }
+
+    .stats{
+        grid-template-columns:1fr 1fr;
+    }
+}
 </style>
 </head>
+
 <body>
-<header><div class="logo">𝐿𝑂𝐿𝑂𝐷𝐽𝑌 <span>𝐴𝐼</span></div><div class="mode">● SIMULATION / BACKTEST</div></header>
+
+<header>
+    <div class="logo">
+        𝐿𝑂𝐿𝑂𝐷𝐽𝑌 <span>𝐴𝐼</span>
+    </div>
+
+    <div class="mode">
+        ● V4 / SIMULATION
+    </div>
+</header>
+
 <main>
+
 <section class="card">
-<div class="title">Configuration</div>
-<div class="grid">
-<div><label>ACTIF OTC</label><select id="asset">
-<option>TND/USD OTC</option><option>EUR/USD OTC</option><option>GBP/USD OTC</option><option>USD/JPY OTC</option><option>AUD/USD OTC</option><option>USD/CAD OTC</option><option>USD/CHF OTC</option><option>NZD/USD OTC</option><option>EUR/GBP OTC</option><option>EUR/JPY OTC</option><option>GBP/JPY OTC</option>
-</select></div>
-<div><label>NIVEAU D'AFFICHAGE</label><select id="level"><option>FREE — 78%</option><option>PRO — 85%</option><option>VIP — 97%</option><option>OWNER — FULL</option></select></div>
+
+<div class="title">
+    Configuration binaire
 </div>
-<div class="group"><label>SECONDES</label><div class="tfbox" id="seconds"></div></div>
-<div class="group"><label>MINUTES</label><div class="tfbox" id="minutes"></div></div>
-<div class="group"><label>HEURES</label><div class="tfbox" id="hours"></div></div>
-<div class="group"><label>JOURS</label><div class="tfbox" id="days"></div></div>
-<div class="notice">Timeframe sélectionné : <b id="selectedTf">S3</b></div>
+
+<div class="grid">
+
+<div>
+<label>ACTIF OTC</label>
+
+<select id="asset">
+<option>TND/USD OTC</option>
+<option>EUR/USD OTC</option>
+<option>GBP/USD OTC</option>
+<option>USD/JPY OTC</option>
+<option>AUD/USD OTC</option>
+<option>USD/CAD OTC</option>
+<option>USD/CHF OTC</option>
+<option>NZD/USD OTC</option>
+<option>EUR/GBP OTC</option>
+<option>EUR/JPY OTC</option>
+<option>GBP/JPY OTC</option>
+</select>
+</div>
+
+<div>
+<label>NIVEAU</label>
+
+<select id="level">
+<option>FREE</option>
+<option>PRO</option>
+<option>VIP</option>
+<option>OWNER</option>
+</select>
+</div>
+
+</div>
+
+<div class="group">
+
+<label>TIMEFRAME / HORIZON</label>
+
+<div class="tfbox" id="tfbox"></div>
+
+</div>
+
+<div class="notice">
+Timeframe et horizon sont associés pour le test.
+Exemple : M2 = horizon simulé de 2 minutes.
+</div>
+
 </section>
 
 <section class="analysis">
-<div class="card"><div class="title">Analyse technique simulée</div><div class="price" id="price">85.23383</div>
-<div class="metrics">
-<div class="metric"><small>Tendance</small><strong id="trend">—</strong></div>
-<div class="metric"><small>RSI</small><strong id="rsi">—</strong></div>
-<div class="metric"><small>MACD</small><strong id="macd">—</strong></div>
-<div class="metric"><small>EMA</small><strong id="ema">—</strong></div>
-<div class="metric"><small>Momentum</small><strong id="momentum">—</strong></div>
-<div class="metric"><small>Support</small><strong id="support">—</strong></div>
-<div class="metric"><small>Résistance</small><strong id="resistance">—</strong></div>
-<div class="metric"><small>Score technique</small><strong id="raw">—</strong></div>
+
+<div class="card">
+
+<div class="title">
+Analyse technique simulée
 </div>
-<div class="notice">Mode simulation : les données ne sont pas des cours OTC en temps réel.</div></div>
 
-<div class="card"><div class="title">Signal</div><div class="signalbox">
-<div id="signal" class="signal wait">WAIT</div><div class="conf"><span id="confidence">0</span>%</div>
-<div class="bar"><div id="fill" class="fill"></div></div>
-<button class="btn" id="analyze">🤖 ANALYSER</button>
-<div class="notice" id="reason">Lance une analyse.</div>
-</div></div>
+<div class="price" id="price">
+85.23383
+</div>
+
+<div class="metrics">
+
+<div class="metric">
+<small>Tendance</small>
+<strong id="trend">—</strong>
+</div>
+
+<div class="metric">
+<small>RSI</small>
+<strong id="rsi">—</strong>
+</div>
+
+<div class="metric">
+<small>MACD</small>
+<strong id="macd">—</strong>
+</div>
+
+<div class="metric">
+<small>EMA</small>
+<strong id="ema">—</strong>
+</div>
+
+<div class="metric">
+<small>Momentum</small>
+<strong id="momentum">—</strong>
+</div>
+
+<div class="metric">
+<small>Support</small>
+<strong id="support">—</strong>
+</div>
+
+<div class="metric">
+<small>Résistance</small>
+<strong id="resistance">—</strong>
+</div>
+
+<div class="metric">
+<small>Score technique</small>
+<strong id="raw">—</strong>
+</div>
+
+</div>
+
+<div class="notice">
+Simulation uniquement : aucune donnée OTC réelle n'est utilisée.
+</div>
+
+</div>
+
+<div class="card">
+
+<div class="title">
+Signal
+</div>
+
+<div class="signalbox">
+
+<div class="badge" id="horizon">
+HORIZON : S3
+</div>
+
+<div id="signal" class="signal wait">
+WAIT
+</div>
+
+<div class="conf">
+<span id="confidence">0</span>%
+</div>
+
+<div class="bar">
+<div id="fill" class="fill"></div>
+</div>
+
+<button class="btn" id="analyze">
+🤖 ANALYSER
+</button>
+
+<div class="notice" id="reason">
+Lance une analyse.
+</div>
+
+</div>
+
+</div>
+
 </section>
 
-<section class="card"><div class="title">Comparaison des timeframes — Backtest simulé</div>
-<table><thead><tr><th>Timeframe</th><th>Tests</th><th>Corrects</th><th>Incorrects</th><th>Précision</th></tr></thead><tbody id="tfTable"></tbody></table>
-<div class="stat best" style="margin-top:12px"><small>🏆 MEILLEUR TIMEFRAME HISTORIQUE (SIMULATION)</small><strong id="bestTf">—</strong></div>
-<button class="btn" id="backtest">📊 LANCER LE BACKTEST</button>
-<div class="notice">Ce backtest utilise des données synthétiques pour tester l'interface. Il ne démontre pas une précision réelle et ne constitue pas un signal de trading.</div>
+<section class="card">
+
+<div class="title">
+Auto Timeframe — comparaison
+</div>
+
+<table>
+
+<thead>
+<tr>
+<th>TF</th>
+<th>Horizon</th>
+<th>Tests</th>
+<th>Corrects</th>
+<th>Incorrects</th>
+<th>Précision</th>
+</tr>
+</thead>
+
+<tbody id="tfTable">
+</tbody>
+
+</table>
+
+<div class="stat best">
+
+<small>
+🏆 MEILLEUR COUPLE HISTORIQUE — SIMULATION
+</small>
+
+<strong id="bestTf">
+—
+</strong>
+
+</div>
+
+<button class="btn" id="backtest">
+📊 LANCER LE BACKTEST
+</button>
+
+<button class="btn secondary" id="auto">
+⚡ AUTO TIMEFRAME
+</button>
+
+<div class="notice">
+Les résultats sont synthétiques. Ils ne représentent pas une précision réelle ni une garantie de résultat.
+</div>
+
 </section>
-
-<section class="card"><div class="title">Statistiques de session</div>
-<div class="stats"><div class="stat"><small>Analyses</small><strong id="total">0</strong></div><div class="stat"><small>CALL</small><strong id="calls">0</strong></div><div class="stat"><small>PUT</small><strong id="puts">0</strong></div><div class="stat"><small>WAIT</small><strong id="waits">0</strong></div></div></section>
-
-<section class="card"><div class="title">Historique</div><div style="overflow:auto"><table><thead><tr><th>Heure</th><th>Actif</th><th>TF</th><th>Signal</th><th>Score</th></tr></thead><tbody id="history"></tbody></table></div></section>
-</main>
-
-<script>
-let tf="S3",total=0,calls=0,puts=0,waits=0;
-function addTF(id,text){const b=document.createElement("button");b.className="tf"+(text==="S3"?" active":"");b.textContent=text;b.dataset.tf=text;document.getElementById(id).appendChild(b)}
-["S3","S5","S10","S15","S20","S30","S40","S50"].forEach(x=>addTF("seconds",x));
-for(let i=1;i<=60;i++)addTF("minutes","M"+i);
-for(let i=1;i<=24;i++)addTF("hours","H"+i);
-for(let i=1;i<=30;i++)addTF("days","D"+i);
-document.querySelectorAll(".tf").forEach(b=>b.onclick=()=>{document.querySelectorAll(".tf").forEach(x=>x.classList.remove("active"));b.classList.add("active");tf=b.dataset.tf;document.getElementById("selectedTf").textContent=tf});
-
-function analyze(){
-const asset=document.getElementById("asset").value,price=85.23383+(Math.random()-.5)*.04,rsi=30+Math.random()*40;
-const eb=Math.random()>.5,mb=Math.random()>.5,m=Math.random()*2-1;
-const raw=(eb?30:-30)+(mb?30:-30)+(rsi<30?15:rsi>70?-15:0)+(m>.2?25:m<-.2?-25:0);
-const signal=raw>=20?"CALL":raw<=-20?"PUT":"WAIT",score=Math.round(50+Math.abs(raw)/130*49),trend=eb?"HAUSSIÈRE":"BAISSIÈRE",macd=mb?"HAUSSIER":"BAISSIER",mom=m>.2?"FORT":m<-.2?"FAIBLE":"MOYEN";
-for(const [id,v] of [["price",price.toFixed(5)],["trend",trend],["rsi",rsi.toFixed(1)],["macd",macd],["ema",trend],["momentum",mom],["support",(price-.02).toFixed(5)],["resistance",(price+.02).toFixed(5)],["raw",(raw>0?"+":"")+raw]])document.getElementById(id).textContent=v;
-const s=document.getElementById("signal");s.textContent=signal;s.className="signal "+signal.toLowerCase();document.getElementById("confidence").textContent=score;document.getElementById("fill").style.width=score+"%";
-document.getElementById("reason").textContent=`Simulation : ${trend.toLowerCase()} + ${macd.toLowerCase()} + RSI ${rsi.toFixed(1)} + momentum ${mom.toLowerCase()}.`;
-const row=document.createElement("tr");row.innerHTML=`<td>${new Date().toLocaleTimeString("fr-FR")}</td><td>${asset}</td><td>${tf}</td><td>${signal}</td><td>${score}%</td>`;document.getElementById("history").prepend(row);
-total++;if(signal==="CALL")calls++;else if(signal==="PUT")puts++;else waits++;
-document.getElementById("total").textContent=total;document.getElementById("calls").textContent=calls;document.getElementById("puts").textContent=puts;document.getElementById("waits").textContent=waits;
-}
-
-function backtest(){
-const list=["S3","S5","S10","S15","S20","S30","S40","S50","M1","M2","M3","M5","M10","M15","M30","M60","H1","H4","H12","H24","D1","D7","D30"];
-const body=document.getElementById("tfTable");body.innerHTML="";let best={tf:"—",acc:-1};
-for(const t of list){
-const tests=500, accuracy=55+Math.random()*30, correct=Math.round(tests*accuracy/100), incorrect=tests-correct;
-if(accuracy>best.acc)best={tf:t,acc:accuracy};
-const r=document.createElement("tr");r.innerHTML=`<td>${t}</td><td>${tests}</td><td>${correct}</td><td>${incorrect}</td><td>${accuracy.toFixed(1)}%</td>`;body.appendChild(r);
-}
-document.getElementById("bestTf").textContent=`${best.tf} — ${best.acc.toFixed(1)}%`;
-}
-document.getElementById("analyze").onclick=analyze;
-document.getElementById("backtest").onclick=backtest;
-</script>
-</body>
-</html>
+'''
+print("Bloc 1 prêt. Colle-le dans index.html, puis je te donne le bloc 2.")
+ Le bloc 1 est prêt bro. Colle-le dans ton `index.html`, puis je te donne le **bloc 2** avec le moteur JavaScript : génération des timeframes, analyse CALL/PUT/WAIT, backtest et AUTO TIMEFRAME.
