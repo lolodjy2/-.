@@ -837,47 +837,91 @@ function analyze(){
 
 function runBacktest(){
 
-    const table =
-        document.getElementById("tfTable");
+    const table = document.getElementById("tfTable");
 
     table.innerHTML = "";
 
+    const binaryTF = [
+        "S3","S5","S10","S15","S30",
+        "M1","M2","M3","M5","M10","M15"
+    ];
+
     let best = null;
 
-
-    timeframes.forEach(tf=>{
+    binaryTF.forEach(tf => {
 
         const tests = 1000;
 
+        let wins = 0;
+        let losses = 0;
+        let waits = 0;
+
         /*
-        Simulation uniquement.
-        La précision sera remplacée
-        par une mesure réelle lorsque
-        les données historiques seront
-        connectées.
-        */
+         * Série de prix simulée.
+         * Elle sert uniquement à tester le fonctionnement
+         * du moteur avant connexion à des données historiques.
+         */
 
-        const precision =
-            55 + Math.random() * 30;
+        let price = 100;
 
-        const correct =
-            Math.round(
-                tests * precision / 100
-            );
+        for(let i = 0; i < tests; i++){
 
-        const incorrect =
-            tests - correct;
+            const previous = price;
 
+            const movement =
+                (Math.random() - 0.5) * 2;
 
-        if(!best || precision > best.precision){
+            price += movement;
 
-            best = {
-                tf: tf,
-                precision: precision
-            };
+            const change =
+                price - previous;
 
+            /*
+             * Signal très simple pour le prototype :
+             * mouvement positif = CALL
+             * mouvement négatif = PUT
+             * mouvement faible = WAIT
+             */
+
+            let signal = "WAIT";
+
+            if(change > 0.15){
+                signal = "CALL";
+            }
+            else if(change < -0.15){
+                signal = "PUT";
+            }
+
+            /*
+             * Pour simuler une échéance,
+             * on génère ensuite un mouvement futur.
+             */
+
+            const futureMove =
+                (Math.random() - 0.5) * 2;
+
+            if(signal === "WAIT"){
+                waits++;
+                continue;
+            }
+
+            if(
+                (signal === "CALL" && futureMove > 0) ||
+                (signal === "PUT" && futureMove < 0)
+            ){
+                wins++;
+            }
+            else{
+                losses++;
+            }
         }
 
+        const evaluated = wins + losses;
+
+        const precision =
+            evaluated > 0
+            ? (wins / evaluated) * 100
+            : 0;
 
         const row =
             document.createElement("tr");
@@ -886,23 +930,45 @@ function runBacktest(){
             <td>${tf}</td>
             <td>${getHorizon(tf)}</td>
             <td>${tests}</td>
-            <td>${correct}</td>
-            <td>${incorrect}</td>
+            <td>${wins}</td>
+            <td>${losses}</td>
             <td>${precision.toFixed(1)}%</td>
         `;
 
         table.appendChild(row);
 
+        /*
+         * On choisit le meilleur résultat uniquement
+         * parmi les horizons binaires testés.
+         */
+
+        if(
+            evaluated >= 100 &&
+            (!best || precision > best.precision)
+        ){
+            best = {
+                tf: tf,
+                precision: precision,
+                wins: wins,
+                losses: losses,
+                waits: waits
+            };
+        }
+
     });
 
 
-    document.getElementById("bestTf").textContent =
-        best.tf +
-        " — " +
-        getHorizon(best.tf) +
-        " — " +
-        best.precision.toFixed(1) +
-        "%";
+    if(best){
+
+        document.getElementById("bestTf").textContent =
+            best.tf +
+            " — " +
+            getHorizon(best.tf) +
+            " — " +
+            best.precision.toFixed(1) +
+            "%";
+
+    }
 
 }
 
