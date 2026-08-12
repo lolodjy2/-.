@@ -839,79 +839,74 @@ function runBacktest(){
 
     const table = document.getElementById("tfTable");
 
+    if(!table){
+        console.error("Table tfTable introuvable");
+        return;
+    }
+
     table.innerHTML = "";
 
-    const binaryTF = [
+    const timeframes = [
         "S3","S5","S10","S15","S30",
         "M1","M2","M3","M5","M10","M15"
     ];
 
     let best = null;
 
-    binaryTF.forEach(tf => {
+    timeframes.forEach(tf => {
 
         const tests = 1000;
 
+        let call = 0;
+        let put = 0;
+        let wait = 0;
         let wins = 0;
         let losses = 0;
-        let waits = 0;
-
-        /*
-         * Série de prix simulée.
-         * Elle sert uniquement à tester le fonctionnement
-         * du moteur avant connexion à des données historiques.
-         */
 
         let price = 100;
 
         for(let i = 0; i < tests; i++){
 
-            const previous = price;
+            const oldPrice = price;
 
-            const movement =
-                (Math.random() - 0.5) * 2;
+            price += (Math.random() - 0.5) * 2;
 
-            price += movement;
-
-            const change =
-                price - previous;
-
-            /*
-             * Signal très simple pour le prototype :
-             * mouvement positif = CALL
-             * mouvement négatif = PUT
-             * mouvement faible = WAIT
-             */
+            const movement = price - oldPrice;
 
             let signal = "WAIT";
+            let score = 50;
 
-            if(change > 0.15){
+            if(movement > 0.15){
+
                 signal = "CALL";
-            }
-            else if(change < -0.15){
+                score = 60 + Math.random() * 35;
+                call++;
+
+            }else if(movement < -0.15){
+
                 signal = "PUT";
+                score = 60 + Math.random() * 35;
+                put++;
+
+            }else{
+
+                wait++;
             }
-
-            /*
-             * Pour simuler une échéance,
-             * on génère ensuite un mouvement futur.
-             */
-
-            const futureMove =
-                (Math.random() - 0.5) * 2;
 
             if(signal === "WAIT"){
-                waits++;
                 continue;
             }
 
-            if(
-                (signal === "CALL" && futureMove > 0) ||
-                (signal === "PUT" && futureMove < 0)
-            ){
+            const futureMovement =
+                (Math.random() - 0.5) * 2;
+
+            const win =
+                (signal === "CALL" && futureMovement > 0) ||
+                (signal === "PUT" && futureMovement < 0);
+
+            if(win){
                 wins++;
-            }
-            else{
+            }else{
                 losses++;
             }
         }
@@ -923,24 +918,21 @@ function runBacktest(){
             ? (wins / evaluated) * 100
             : 0;
 
-        const row =
-            document.createElement("tr");
+        const row = document.createElement("tr");
 
         row.innerHTML = `
             <td>${tf}</td>
             <td>${getHorizon(tf)}</td>
             <td>${tests}</td>
+            <td>${call}</td>
+            <td>${put}</td>
+            <td>${wait}</td>
             <td>${wins}</td>
             <td>${losses}</td>
             <td>${precision.toFixed(1)}%</td>
         `;
 
         table.appendChild(row);
-
-        /*
-         * On choisit le meilleur résultat uniquement
-         * parmi les horizons binaires testés.
-         */
 
         if(
             evaluated >= 100 &&
@@ -950,24 +942,27 @@ function runBacktest(){
                 tf: tf,
                 precision: precision,
                 wins: wins,
-                losses: losses,
-                waits: waits
+                losses: losses
             };
         }
 
     });
 
-
     if(best){
 
-        document.getElementById("bestTf").textContent =
-            best.tf +
-            " — " +
-            getHorizon(best.tf) +
-            " — " +
-            best.precision.toFixed(1) +
-            "%";
+        const bestElement =
+            document.getElementById("bestTf");
 
+        if(bestElement){
+
+            bestElement.textContent =
+                best.tf +
+                " — " +
+                getHorizon(best.tf) +
+                " — " +
+                best.precision.toFixed(1) +
+                "%";
+        }
     }
 
 }
