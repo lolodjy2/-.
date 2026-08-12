@@ -507,6 +507,502 @@ Les résultats sont synthétiques. Ils ne représentent pas une précision réel
 </div>
 
 </section>
-'''
-print("Bloc 1 prêt. Colle-le dans index.html, puis je te donne le bloc 2.")
- Le bloc 1 est prêt bro. Colle-le dans ton `index.html`, puis je te donne le **bloc 2** avec le moteur JavaScript : génération des timeframes, analyse CALL/PUT/WAIT, backtest et AUTO TIMEFRAME.
+<section class="card">
+
+<div class="title">
+Statistiques de session
+</div>
+
+<div class="stats">
+
+<div class="stat">
+<small>Analyses</small>
+<strong id="total">0</strong>
+</div>
+
+<div class="stat">
+<small>CALL</small>
+<strong id="calls">0</strong>
+</div>
+
+<div class="stat">
+<small>PUT</small>
+<strong id="puts">0</strong>
+</div>
+
+<div class="stat">
+<small>WAIT</small>
+<strong id="waits">0</strong>
+</div>
+
+</div>
+
+</section>
+
+
+<section class="card">
+
+<div class="title">
+Historique
+</div>
+
+<div style="overflow:auto">
+
+<table>
+
+<thead>
+
+<tr>
+<th>Heure</th>
+<th>Actif</th>
+<th>TF</th>
+<th>Signal</th>
+<th>Score</th>
+</tr>
+
+</thead>
+
+<tbody id="history">
+</tbody>
+
+</table>
+
+</div>
+
+</section>
+
+<div class="notice" style="text-align:center;margin-bottom:30px">
+𝐿𝑂𝐿𝑂𝐷𝐽𝑌 𝐴𝐼 — V4<br>
+Moteur de démonstration / backtest simulé.
+</div>
+
+</main>
+
+
+<script>
+
+const timeframes = [
+"S3","S5","S10","S15","S20","S30","S40","S50",
+"M1","M2","M3","M5","M10","M15","M30","M60",
+"H1","H4","H12","H24",
+"D1","D7","D30"
+];
+
+let selectedTF = "S3";
+
+let total = 0;
+let calls = 0;
+let puts = 0;
+let waits = 0;
+
+
+/* =========================
+   TIMEFRAME
+========================= */
+
+function getHorizon(tf){
+
+    const number = parseInt(tf.substring(1));
+
+    if(tf.startsWith("S")){
+        return number + " seconde" + (number > 1 ? "s" : "");
+    }
+
+    if(tf.startsWith("M")){
+        return number + " minute" + (number > 1 ? "s" : "");
+    }
+
+    if(tf.startsWith("H")){
+        return number + " heure" + (number > 1 ? "s" : "");
+    }
+
+    return number + " jour" + (number > 1 ? "s" : "");
+}
+
+
+function createTimeframes(){
+
+    const box = document.getElementById("tfbox");
+
+    timeframes.forEach((tf,index)=>{
+
+        const button = document.createElement("button");
+
+        button.className =
+            "tf" + (index === 0 ? " active" : "");
+
+        button.textContent = tf;
+
+        button.onclick = function(){
+
+            document
+                .querySelectorAll(".tf")
+                .forEach(x=>x.classList.remove("active"));
+
+            button.classList.add("active");
+
+            selectedTF = tf;
+
+            document.getElementById("horizon").textContent =
+                "HORIZON : " + getHorizon(tf);
+
+        };
+
+        box.appendChild(button);
+
+    });
+
+}
+
+createTimeframes();
+
+
+/* =========================
+   ANALYSE
+========================= */
+
+function analyze(){
+
+    const asset =
+        document.getElementById("asset").value;
+
+    const price =
+        85.23383 + (Math.random() - 0.5) * 0.04;
+
+    const rsi =
+        30 + Math.random() * 40;
+
+    const emaBull =
+        Math.random() > 0.5;
+
+    const macdBull =
+        Math.random() > 0.5;
+
+    const momentum =
+        Math.random() * 2 - 1;
+
+
+    let score = 0;
+
+    if(emaBull) score += 30;
+    else score -= 30;
+
+    if(macdBull) score += 30;
+    else score -= 30;
+
+    if(rsi < 30) score += 15;
+
+    else if(rsi > 70) score -= 15;
+
+    if(momentum > 0.2)
+        score += 25;
+
+    else if(momentum < -0.2)
+        score -= 25;
+
+
+    let signal;
+
+    if(score >= 20)
+        signal = "CALL";
+
+    else if(score <= -20)
+        signal = "PUT";
+
+    else
+        signal = "WAIT";
+
+
+    const confidence =
+        Math.round(
+            50 + Math.abs(score) / 130 * 49
+        );
+
+
+    const trend =
+        emaBull ? "HAUSSIÈRE" : "BAISSIÈRE";
+
+    const macd =
+        macdBull ? "HAUSSIER" : "BAISSIER";
+
+    const momentumText =
+        momentum > 0.2
+        ? "FORT"
+        : momentum < -0.2
+        ? "FAIBLE"
+        : "MOYEN";
+
+
+    document.getElementById("price").textContent =
+        price.toFixed(5);
+
+    document.getElementById("trend").textContent =
+        trend;
+
+    document.getElementById("rsi").textContent =
+        rsi.toFixed(1);
+
+    document.getElementById("macd").textContent =
+        macd;
+
+    document.getElementById("ema").textContent =
+        trend;
+
+    document.getElementById("momentum").textContent =
+        momentumText;
+
+    document.getElementById("support").textContent =
+        (price - 0.02).toFixed(5);
+
+    document.getElementById("resistance").textContent =
+        (price + 0.02).toFixed(5);
+
+    document.getElementById("raw").textContent =
+        score > 0 ? "+" + score : score;
+
+
+    const signalElement =
+        document.getElementById("signal");
+
+    signalElement.textContent = signal;
+
+    signalElement.className =
+        "signal " + signal.toLowerCase();
+
+
+    document.getElementById("confidence")
+        .textContent = confidence;
+
+    document.getElementById("fill")
+        .style.width = confidence + "%";
+
+
+    document.getElementById("reason").textContent =
+        "Simulation : " +
+        trend.toLowerCase() +
+        " + " +
+        macd.toLowerCase() +
+        " + RSI " +
+        rsi.toFixed(1) +
+        " + momentum " +
+        momentumText.toLowerCase();
+
+
+    const row =
+        document.createElement("tr");
+
+    row.innerHTML = `
+        <td>${new Date().toLocaleTimeString("fr-FR")}</td>
+        <td>${asset}</td>
+        <td>${selectedTF}</td>
+        <td>${signal}</td>
+        <td>${confidence}%</td>
+    `;
+
+    document
+        .getElementById("history")
+        .prepend(row);
+
+
+    total++;
+
+    if(signal === "CALL")
+        calls++;
+
+    else if(signal === "PUT")
+        puts++;
+
+    else
+        waits++;
+
+
+    document.getElementById("total")
+        .textContent = total;
+
+    document.getElementById("calls")
+        .textContent = calls;
+
+    document.getElementById("puts")
+        .textContent = puts;
+
+    document.getElementById("waits")
+        .textContent = waits;
+
+}
+
+
+/* =========================
+   BACKTEST
+========================= */
+
+function runBacktest(){
+
+    const table =
+        document.getElementById("tfTable");
+
+    table.innerHTML = "";
+
+    let best = null;
+
+
+    timeframes.forEach(tf=>{
+
+        const tests = 1000;
+
+        /*
+        Simulation uniquement.
+        La précision sera remplacée
+        par une mesure réelle lorsque
+        les données historiques seront
+        connectées.
+        */
+
+        const precision =
+            55 + Math.random() * 30;
+
+        const correct =
+            Math.round(
+                tests * precision / 100
+            );
+
+        const incorrect =
+            tests - correct;
+
+
+        if(!best || precision > best.precision){
+
+            best = {
+                tf: tf,
+                precision: precision
+            };
+
+        }
+
+
+        const row =
+            document.createElement("tr");
+
+        row.innerHTML = `
+            <td>${tf}</td>
+            <td>${getHorizon(tf)}</td>
+            <td>${tests}</td>
+            <td>${correct}</td>
+            <td>${incorrect}</td>
+            <td>${precision.toFixed(1)}%</td>
+        `;
+
+        table.appendChild(row);
+
+    });
+
+
+    document.getElementById("bestTf").textContent =
+        best.tf +
+        " — " +
+        getHorizon(best.tf) +
+        " — " +
+        best.precision.toFixed(1) +
+        "%";
+
+}
+
+
+/* =========================
+   AUTO TIMEFRAME
+========================= */
+
+function autoTimeframe(){
+
+    runBacktest();
+
+    let rows =
+        document
+        .getElementById("tfTable")
+        .querySelectorAll("tr");
+
+
+    let bestRow = null;
+    let bestValue = -1;
+
+
+    rows.forEach(row=>{
+
+        const cells =
+            row.querySelectorAll("td");
+
+        if(cells.length < 6)
+            return;
+
+        const value =
+            parseFloat(
+                cells[5].textContent
+            );
+
+
+        if(value > bestValue){
+
+            bestValue = value;
+            bestRow = row;
+
+        }
+
+    });
+
+
+    if(!bestRow)
+        return;
+
+
+    selectedTF =
+        bestRow.children[0].textContent;
+
+
+    document
+        .querySelectorAll(".tf")
+        .forEach(button=>{
+
+            button.classList.toggle(
+                "active",
+                button.textContent === selectedTF
+            );
+
+        });
+
+
+    document.getElementById("horizon")
+        .textContent =
+        "HORIZON : " +
+        getHorizon(selectedTF);
+
+
+    document.getElementById("bestTf")
+        .textContent =
+        selectedTF +
+        " — " +
+        getHorizon(selectedTF) +
+        " — " +
+        bestValue.toFixed(1) +
+        "%";
+
+}
+
+
+/* =========================
+   BOUTONS
+========================= */
+
+document.getElementById("analyze")
+    .onclick = analyze;
+
+
+document.getElementById("backtest")
+    .onclick = runBacktest;
+
+
+document.getElementById("auto")
+    .onclick = autoTimeframe;
+
+</script>
+
+</body>
+</html>
