@@ -837,6 +837,173 @@ function analyze(){
 /* =========================
    BACKTEST
 ========================= */
+function calculateSimulatedSignal(){
+
+    /*
+     * ============================================================
+     * LOLODJY AI — V5
+     * MOTEUR DE SIMULATION TECHNIQUE
+     *
+     * IMPORTANT :
+     * Les données sont synthétiques.
+     * Ce moteur ne reçoit PAS de prix de marché réels.
+     * ============================================================
+     */
+
+    // ------------------------------------------------------------
+    // 1. INDICATEURS SIMULÉS
+    // ------------------------------------------------------------
+
+    const rsi = 30 + Math.random() * 40;
+
+    const emaFast =
+        98 + Math.random() * 4;
+
+    const emaSlow =
+        98 + Math.random() * 4;
+
+    const momentum =
+        (Math.random() - 0.5) * 2;
+
+    // Tendance simulée
+    let trend = "NEUTRE";
+
+    if (emaFast > emaSlow && momentum > 0) {
+        trend = "HAUSSIÈRE";
+    }
+    else if (emaFast < emaSlow && momentum < 0) {
+        trend = "BAISSIÈRE";
+    }
+
+    // ------------------------------------------------------------
+    // 2. SCORE CALL / PUT
+    // ------------------------------------------------------------
+
+    let callScore = 0;
+    let putScore = 0;
+
+    // RSI
+    if (rsi < 35) {
+        callScore += 20;
+    }
+    else if (rsi > 65) {
+        putScore += 20;
+    }
+
+    // Zone neutre RSI
+    else {
+        callScore += 5;
+        putScore += 5;
+    }
+
+    // EMA
+    if (emaFast > emaSlow) {
+        callScore += 30;
+    }
+    else if (emaFast < emaSlow) {
+        putScore += 30;
+    }
+
+    // Momentum
+    if (momentum > 0.25) {
+        callScore += 25;
+    }
+    else if (momentum < -0.25) {
+        putScore += 25;
+    }
+
+    // Tendance
+    if (trend === "HAUSSIÈRE") {
+        callScore += 15;
+    }
+    else if (trend === "BAISSIÈRE") {
+        putScore += 15;
+    }
+
+    // ------------------------------------------------------------
+    // 3. DÉTERMINATION DU RÉSULTAT
+    // ------------------------------------------------------------
+
+    let signal = "WAIT";
+    let score = 50;
+
+    const difference =
+        Math.abs(callScore - putScore);
+
+    if (
+        callScore > putScore &&
+        callScore >= 55 &&
+        difference >= 10
+    ) {
+        signal = "CALL";
+        score = callScore;
+    }
+
+    else if (
+        putScore > callScore &&
+        putScore >= 55 &&
+        difference >= 10
+    ) {
+        signal = "PUT";
+        score = putScore;
+    }
+
+    else {
+        signal = "WAIT";
+
+        // Score de confiance faible lorsque les indicateurs
+        // ne sont pas suffisamment alignés.
+        score =
+            Math.max(callScore, putScore, 50);
+    }
+
+    // ------------------------------------------------------------
+    // 4. LIMITATION DU SCORE
+    // ------------------------------------------------------------
+
+    score = Math.max(
+        50,
+        Math.min(99, Math.round(score))
+    );
+
+    // ------------------------------------------------------------
+    // 5. NORMALISATION DES VALEURS
+    // ------------------------------------------------------------
+
+    return {
+
+        signal: signal,
+
+        score: score,
+
+        rsi: Number(
+            rsi.toFixed(1)
+        ),
+
+        emaFast: Number(
+            emaFast.toFixed(4)
+        ),
+
+        emaSlow: Number(
+            emaSlow.toFixed(4)
+        ),
+
+        momentum: Number(
+            momentum.toFixed(3)
+        ),
+
+        trend: trend,
+
+        callScore: callScore,
+
+        putScore: putScore,
+
+        difference: difference,
+
+        simulated: true
+
+    };
+    }
 
 function runBacktest(){
 
