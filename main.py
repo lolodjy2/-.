@@ -10,16 +10,21 @@ from pydantic import BaseModel
 import pandas as pd
 import websockets
 
+# Configuration des logs
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
+# --- GESTION DU CYCLE DE VIE ---
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # Lancement du WebSocket en arrière-plan au démarrage du serveur
     ws_task = asyncio.create_task(connect_po_websocket())
     yield
+    # Nettoyage à l'arrêt du serveur
     ws_task.cancel()
 
 app = FastAPI(title="LOLODJY AI - Pocket Option OTC Engine", lifespan=lifespan)
 
+# Autoriser les requêtes CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -28,6 +33,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Stockage en mémoire des bougies construites via WebSocket
 CANDLE_DATA = defaultdict(list)
 MAX_CANDLES = 100
 
@@ -35,6 +41,7 @@ class AnalyzeRequest(BaseModel):
     asset: str
     timeframe: str
 
+# Mappage des noms d'actifs vers les symboles Pocket Option
 PO_ASSET_MAP = {
     "EUR/USD OTC": "EURUSD_otc",
     "GBP/USD OTC": "GBPUSD_otc",
@@ -50,7 +57,7 @@ PO_ASSET_MAP = {
 
 PO_WS_URL = "wss://api-fin.po.market/socket.io/?EIO=4&transport=websocket"
 
-# --- FONCTIONS DE CALCULS TECHNIQUES MAISON ---
+# --- FONCTIONS DE CALCULS TECHNIQUES AUTONOMES ---
 def compute_rsi(series, period=14):
     delta = series.diff()
     gain = (delta.where(delta > 0, 0)).rolling(window=period).mean()
@@ -68,7 +75,7 @@ def compute_macd(series, fast=12, slow=26, signal=9):
     signal_line = macd_line.ewm(span=signal, adjust=False).mean()
     return macd_line, signal_line
 
-# --- WEBSOCKET ---
+# --- WEBSOCKET POCKET OPTION ---
 async def connect_po_websocket():
     while True:
         try:
@@ -80,13 +87,17 @@ async def connect_po_websocket():
                 }
             ) as ws:
                 logging.info("Connecté au WebSocket Pocket Option !")
+                
+                # Handshake Socket.io
                 await ws.send('40')
                 
                 async for message in ws:
+                    # Keep-alive ping/pong
                     if message == "2":
                         await ws.send("3")
                         continue
                     
+                    # Traitement des ticks de prix
                     if message.startswith('42'):
                         try:
                             data = json.loads(message[2:])
@@ -105,12 +116,14 @@ async def connect_po_websocket():
                         except Exception:
                             pass
         except asyncio.CancelledError:
+            logging.info("Tâche WebSocket arrêtée.")
             break
         except Exception as e:
             logging.error(f"Erreur WS: {e}. Reconnexion dans 5s...")
             await asyncio.sleep(5)
 
 def update_candle_data(symbol, price, timestamp):
+    """Agrège les ticks en bougies de 1 minute"""
     minute_time = timestamp - (timestamp % 60)
     candles = CANDLE_DATA[symbol]
     
@@ -119,11 +132,18 @@ def update_candle_data(symbol, price, timestamp):
         candles[-1]['low'] = min(candles[-1]['low'], price)
         candles[-1]['close'] = price
     else:
-        new_candle = {'time': minute_time, 'open': price, 'high': price, 'low': price, 'close': price}
+        new_candle = {
+            'time': minute_time,
+            'open': price,
+            'high': price,
+            'low': price,
+            'close': price
+        }
         candles.append(new_candle)
         if len(candles) > MAX_CANDLES:
             candles.pop(0)
 
+# --- ENDPOINTS API ---
 @app.get("/")
 def root():
     return {"status": "ok", "engine": "Pocket Option OTC Live Engine"}
@@ -136,12 +156,12 @@ def analyze(req: AnalyzeRequest):
     if len(raw_candles) < 20:
         raise HTTPException(
             status_code=503, 
-            detail=f"Capture du flux OTC en cours pour {req.asset} ({len(raw_candles)}/20)... Réessaie dans quelques secondes."
+            detail=f"Capture du flux OTC en cours pour {req.asset} ({len(raw_candles)}/20 bougies)... Réessaie dans quelques secondes."
         )
 
     df = pd.DataFrame(raw_candles)
     
-    # Indicateurs
+    # Calcul des indicateurs
     df['RSI'] = compute_rsi(df['close'], 14)
     df['EMA_FAST'] = compute_ema(df['close'], 9)
     df['EMA_SLOW'] = compute_ema(df['close'], 21)
@@ -158,6 +178,7 @@ def analyze(req: AnalyzeRequest):
     support = float(df['low'].tail(20).min())
     resistance = float(df['high'].tail(20).max())
 
+    # Algorithme de génération du signal
     score = 50
     reasons = []
 
