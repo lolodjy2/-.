@@ -24,7 +24,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="LOLODJY AI - Pocket Option OTC Engine", lifespan=lifespan)
 
-# Autoriser les requêtes CORS pour ton front-end
+# Autoriser les requêtes CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -75,19 +75,32 @@ def compute_macd(series, fast=12, slow=26, signal=9):
     signal_line = macd_line.ewm(span=signal, adjust=False).mean()
     return macd_line, signal_line
 
-# --- WEBSOCKET POCKET OPTION ---
+# --- WEBSOCKET POCKET OPTION (Contournement Anti-403) ---
 async def connect_po_websocket():
     headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-        "Origin": "https://pocketoption.com"
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+        "Origin": "https://pocketoption.com",
+        "Accept-Language": "fr-FR,fr;q=0.9,en-US;q=0.8,en;q=0.7",
+        "Cache-Control": "no-cache",
+        "Pragma": "no-cache"
     }
     while True:
         try:
-            # Gestion dynamique de la compatibilité des versions de websockets
+            # Gestion de la compatibilité des versions websockets
             try:
-                ws_conn = websockets.connect(PO_WS_URL, additional_headers=headers)
+                ws_conn = websockets.connect(
+                    PO_WS_URL, 
+                    additional_headers=headers,
+                    ping_interval=20,
+                    ping_timeout=10
+                )
             except TypeError:
-                ws_conn = websockets.connect(PO_WS_URL, extra_headers=headers)
+                ws_conn = websockets.connect(
+                    PO_WS_URL, 
+                    extra_headers=headers,
+                    ping_interval=20,
+                    ping_timeout=10
+                )
 
             async with ws_conn as ws:
                 logging.info("Connecté au WebSocket Pocket Option !")
@@ -96,7 +109,7 @@ async def connect_po_websocket():
                 await ws.send('40')
                 
                 async for message in ws:
-                    # Traitement des pings Socket.io pour garder la connexion active
+                    # Traitement des pings Socket.io (keep-alive)
                     if message == "2":
                         await ws.send("3")
                         continue
@@ -132,7 +145,7 @@ def update_candle_data(symbol, price, timestamp):
     candles = CANDLE_DATA[symbol]
     
     if len(candles) > 0 and candles[-1]['time'] == minute_time:
-        # Mise à jour de la bougie courante
+        # Mise à jour de la bougie en cours
         candles[-1]['high'] = max(candles[-1]['high'], price)
         candles[-1]['low'] = min(candles[-1]['low'], price)
         candles[-1]['close'] = price
@@ -159,7 +172,7 @@ def analyze(req: AnalyzeRequest):
     po_symbol = PO_ASSET_MAP.get(req.asset, "EURUSD_otc")
     raw_candles = CANDLE_DATA.get(po_symbol, [])
 
-    # Vérification du nombre minimum de bougies pour calculs
+    # Vérification des bougies minimales
     if len(raw_candles) < 20:
         raise HTTPException(
             status_code=503, 
@@ -185,7 +198,7 @@ def analyze(req: AnalyzeRequest):
     support = float(df['low'].tail(20).min())
     resistance = float(df['high'].tail(20).max())
 
-    # Algorithme de scoring et signal
+    # Génération du score et du signal
     score = 50
     reasons = []
 
