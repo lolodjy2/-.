@@ -125,3 +125,5 @@ def analyze(req: AnalyzeRequest):
         "signal": signal,
         "reason": " | ".join(reasons) if reasons else "Marché neutre"
     }
+from mangum import Mangum
+handler = Mangum(app)
