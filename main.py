@@ -31,7 +31,7 @@ app.add_middleware(
 CANDLE_DATA = defaultdict(list)
 CURRENT_PRICES = {
     "EUR/USD OTC": 1.08510,
-    "GBP/USD OTC": 1.36295,  # Synchronisé direct sur ton écran !
+    "GBP/USD OTC": 1.36169,  # Synchronisé au micro-pip près !
     "USD/JPY OTC": 155.200,
     "AUD/USD OTC": 0.65500,
     "USD/CAD OTC": 1.36500,
@@ -41,6 +41,7 @@ CURRENT_PRICES = {
     "EUR/JPY OTC": 183.150,
     "GBP/JPY OTC": 196.200,
 }
+
 
 MAX_CANDLES = 100
 
