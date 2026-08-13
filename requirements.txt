@@ -2,6 +2,5 @@ fastapi
 uvicorn
 websockets
 pandas
-pandas_ta
 pydantic
 
