@@ -1,2 +1,6 @@
 fastapi
 uvicorn
+mangum
+yfinance
+pandas
+pandas_ta
