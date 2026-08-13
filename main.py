@@ -25,6 +25,19 @@ class AnalysisRequest(BaseModel):
     timeframe: str = "M2"
     price: Optional[float] = None
 
+class Candle(BaseModel):
+    timestamp: int
+    open: float
+    high: float
+    low: float
+    close: float
+
+
+class MarketDataRequest(BaseModel):
+    asset: str
+    timeframe: str
+    candles: list[Candle]
+
 
 # ============================================================
 # OUTILS
@@ -286,6 +299,30 @@ def analyze_market(
 # ============================================================
 # API
 # ============================================================
+
+@app.post("/analyze-candles")
+def analyze_candles(request: MarketDataRequest):
+
+    if len(request.candles) < 30:
+        return {
+            "error": "Il faut au moins 30 bougies.",
+            "received": len(request.candles)
+        }
+
+    closes = [
+        candle.close
+        for candle in request.candles
+    ]
+
+    result = analyze_market(
+        closes,
+        request.timeframe
+    )
+
+    result["asset"] = request.asset
+    result["candles_used"] = len(closes)
+
+    return result
 
 @app.get("/")
 def home():
