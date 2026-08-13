@@ -2,7 +2,6 @@ import asyncio
 import json
 import logging
 import time
-import random
 from collections import defaultdict
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException
@@ -12,16 +11,19 @@ import pandas as pd
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
+# Variable globale pour l'ID utilisateur
+USER_ID = "137986842"
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Démarrage du moteur de prix en tâche de fond
-    fetch_task = asyncio.create_task(price_collector_task())
+    # Démarrage du serveur FastAPI
+    logging.info(f"Démarrage du moteur LOLODJY AI pour l'utilisateur {USER_ID}...")
     yield
-    fetch_task.cancel()
+    logging.info("Arrêt du moteur...")
 
-app = FastAPI(title="LOLODJY AI - Pocket Option OTC Engine", lifespan=lifespan)
+app = FastAPI(title="LOLODJY AI - Pocket Option Engine", lifespan=lifespan)
 
-# Autoriser l'accès CORS pour ton interface frontend
+# Autoriser toutes les requêtes CORS (pour la communication avec ton site web)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -30,28 +32,15 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-USER_ID = "137986842"
+# Stockage des bougies en mémoire
 CANDLE_DATA = defaultdict(list)
-
-# Prix initiaux synchronisés
-CURRENT_PRICES = {
-    "EUR/USD OTC": 1.08510,
-    "GBP/USD OTC": 1.36295,
-    "USD/JPY OTC": 155.200,
-    "AUD/USD OTC": 0.65500,
-    "USD/CAD OTC": 1.36500,
-    "USD/CHF OTC": 0.90500,
-    "NZD/USD OTC": 0.60500,
-    "EUR/GBP OTC": 0.85700,
-    "EUR/JPY OTC": 183.150,
-    "GBP/JPY OTC": 196.200,
-}
-
 MAX_CANDLES = 100
 
+# Modèle de requête acceptant le prix réel envoyé par le navigateur
 class AnalyzeRequest(BaseModel):
     asset: str
     timeframe: str
+    current_price: float = None  # Transmet le prix réel en direct
 
 def compute_rsi(series, period=14):
     delta = series.diff()
@@ -69,25 +58,6 @@ def compute_macd(series, fast=12, slow=26, signal=9):
     macd_line = ema_fast - ema_slow
     signal_line = macd_line.ewm(span=signal, adjust=False).mean()
     return macd_line, signal_line
-
-# --- MOTEUR DE PRIX OTC HAUTE FRÉQUENCE (Mise à jour toutes les 500ms) ---
-async def price_collector_task():
-    logging.info("Démarrage du moteur de prix Haute Fréquence LOLODJY AI...")
-    while True:
-        try:
-            now = int(time.time())
-            for asset_name in CURRENT_PRICES.keys():
-                # Micro-ticks temps réel
-                step = random.choice([-0.00008, -0.00003, 0.00001, 0.00004, 0.00009])
-                CURRENT_PRICES[asset_name] = round(CURRENT_PRICES[asset_name] + step, 5)
-                update_candle_data(asset_name, CURRENT_PRICES[asset_name], now)
-            
-            await asyncio.sleep(0.5)
-        except asyncio.CancelledError:
-            break
-        except Exception as e:
-            logging.error(f"Erreur moteur: {e}")
-            await asyncio.sleep(1)
 
 def update_candle_data(asset_name, price, timestamp):
     minute_time = timestamp - (timestamp % 60)
@@ -107,22 +77,36 @@ def update_candle_data(asset_name, price, timestamp):
 def root():
     return {
         "status": "ok", 
-        "engine": "LOLODJY AI OTC Engine",
+        "engine": "LOLODJY AI - Live Real-Price Engine",
         "user_id": USER_ID
     }
 
 @app.post("/analyze")
 def analyze(req: AnalyzeRequest):
+    timestamp = int(time.time())
+
+    # 1. Mise à jour du prix réel si fourni par le client
+    if req.current_price is not None and req.current_price > 0:
+        update_candle_data(req.asset, req.current_price, timestamp)
+    
     raw_candles = CANDLE_DATA.get(req.asset, [])
 
+    # Si le tableau de bougies est trop court, on initialise avec le prix reçu
     if len(raw_candles) < 3:
-        raise HTTPException(
-            status_code=503, 
-            detail=f"Moteur en chauffe pour {req.asset}... Réessaie dans 2 secondes."
-        )
+        if req.current_price is not None and req.current_price > 0:
+            # Génère 3 bougies initiales basées sur le prix réel pour démarrer le calcul
+            for offset in [120, 60, 0]:
+                update_candle_data(req.asset, req.current_price, timestamp - offset)
+            raw_candles = CANDLE_DATA.get(req.asset, [])
+        else:
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Aucune donnée de prix reçue pour {req.asset}. Fournis un 'current_price'."
+            )
 
     df = pd.DataFrame(raw_candles)
     
+    # Calcul des indicateurs techniques
     df['RSI'] = compute_rsi(df['close'], 14)
     df['EMA_FAST'] = compute_ema(df['close'], 9)
     df['EMA_SLOW'] = compute_ema(df['close'], 21)
@@ -142,6 +126,7 @@ def analyze(req: AnalyzeRequest):
     score = 50
     reasons = []
 
+    # Analyse de la tendance (EMA)
     if ema_fast > ema_slow:
         score += 20
         trend = "HAUSSIÈRE"
@@ -151,6 +136,7 @@ def analyze(req: AnalyzeRequest):
         trend = "BAISSIÈRE"
         reasons.append("EMA Fast < EMA Slow")
 
+    # Analyse du RSI
     if rsi_val < 40:
         score += 20
         reasons.append("RSI Zone d'Achat")
@@ -158,6 +144,7 @@ def analyze(req: AnalyzeRequest):
         score -= 20
         reasons.append("RSI Zone de Vente")
 
+    # Analyse du MACD
     if macd_val > macd_sig:
         score += 10
         macd_status = "BULLISH"
