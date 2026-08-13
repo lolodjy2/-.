@@ -1,12 +1,13 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from typing import Optional
-import math
-import random
+import yfinance as yf
+import pandas as pd
+import pandas_ta as ta
 
-app = FastAPI(title="𝐿𝑂𝐿𝑂𝐷𝐽𝑌 𝐴𝐼 V6")
+app = FastAPI(title="LOLODJY AI Engine")
 
+# Autoriser les requêtes CORS depuis le frontend
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -15,345 +16,112 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-
-# ============================================================
-# MODELE DE REQUETE
-# ============================================================
-
-class AnalysisRequest(BaseModel):
-    asset: str = "TND/USD OTC"
-    timeframe: str = "M2"
-    price: Optional[float] = None
-
-class Candle(BaseModel):
-    timestamp: int
-    open: float
-    high: float
-    low: float
-    close: float
-
-
-class MarketDataRequest(BaseModel):
+class AnalyzeRequest(BaseModel):
     asset: str
     timeframe: str
-    candles: list[Candle]
 
-
-# ============================================================
-# OUTILS
-# ============================================================
-
-def clamp(value, minimum, maximum):
-    return max(minimum, min(maximum, value))
-
-
-def calculate_ema(values, period):
-    if not values:
-        return 0
-
-    if len(values) < period:
-        return sum(values) / len(values)
-
-    multiplier = 2 / (period + 1)
-
-    ema = sum(values[:period]) / period
-
-    for price in values[period:]:
-        ema = (
-            (price - ema) * multiplier
-        ) + ema
-
-    return ema
-
-
-def calculate_rsi(values, period=14):
-
-    if len(values) <= period:
-        return 50.0
-
-    gains = []
-    losses = []
-
-    for i in range(1, len(values)):
-        change = values[i] - values[i - 1]
-
-        if change >= 0:
-            gains.append(change)
-            losses.append(0)
-        else:
-            gains.append(0)
-            losses.append(abs(change))
-
-    recent_gains = gains[-period:]
-    recent_losses = losses[-period:]
-
-    average_gain = (
-        sum(recent_gains) / period
-    )
-
-    average_loss = (
-        sum(recent_losses) / period
-    )
-
-    if average_loss == 0:
-        return 100.0
-
-    rs = average_gain / average_loss
-
-    rsi = 100 - (
-        100 / (1 + rs)
-    )
-
-    return round(rsi, 2)
-
-
-def calculate_momentum(values, period=5):
-
-    if len(values) <= period:
-        return 0
-
-    return (
-        values[-1] -
-        values[-period - 1]
-    )
-
-
-def generate_simulated_prices(
-    start_price=85.23383,
-    count=100
-):
-
-    prices = [start_price]
-
-    for _ in range(count - 1):
-
-        movement = (
-            random.uniform(-0.025, 0.025)
-        )
-
-        prices.append(
-            prices[-1] + movement
-        )
-
-    return prices
-
-
-# ============================================================
-# ANALYSE
-# ============================================================
-
-def analyze_market(
-    prices,
-    timeframe
-):
-
-    current_price = prices[-1]
-
-    rsi = calculate_rsi(prices)
-
-    ema_fast = calculate_ema(
-        prices,
-        9
-    )
-
-    ema_slow = calculate_ema(
-        prices,
-        21
-    )
-
-    momentum = calculate_momentum(
-        prices
-    )
-
-    call_score = 0
-    put_score = 0
-
-
-    # RSI
-
-    if rsi < 35:
-        call_score += 20
-
-    elif rsi > 65:
-        put_score += 20
-
-
-    # EMA
-
-    if ema_fast > ema_slow:
-        call_score += 30
-
-    elif ema_fast < ema_slow:
-        put_score += 30
-
-
-    # Momentum
-
-    if momentum > 0.01:
-        call_score += 25
-
-    elif momentum < -0.01:
-        put_score += 25
-
-
-    # Tendance
-
-    if ema_fast > ema_slow:
-        call_score += 15
-
-    elif ema_fast < ema_slow:
-        put_score += 15
-
-
-    difference = abs(
-        call_score - put_score
-    )
-
-
-    # ========================================================
-    # DECISION
-    # ========================================================
-
-    if (
-        call_score >= 55
-        and call_score > put_score
-        and difference >= 10
-    ):
-
-        signal = "CALL"
-        score = call_score
-
-    elif (
-        put_score >= 55
-        and put_score > call_score
-        and difference >= 10
-    ):
-
-        signal = "PUT"
-        score = put_score
-
-    else:
-
-        signal = "WAIT"
-        score = 50
-
-
-    score = clamp(
-        round(score),
-        50,
-        99
-    )
-
-
-    if ema_fast > ema_slow:
-        trend = "HAUSSIÈRE"
-
-    elif ema_fast < ema_slow:
-        trend = "BAISSIÈRE"
-
-    else:
-        trend = "NEUTRE"
-
-
-    return {
-
-        "signal": signal,
-
-        "score": score,
-
-        "price": round(
-            current_price,
-            5
-        ),
-
-        "rsi": rsi,
-
-        "ema_fast": round(
-            ema_fast,
-            5
-        ),
-
-        "ema_slow": round(
-            ema_slow,
-            5
-        ),
-
-        "momentum": round(
-            momentum,
-            5
-        ),
-
-        "trend": trend,
-
-        "call_score": call_score,
-
-        "put_score": put_score,
-
-        "timeframe": timeframe,
-
-        "simulation": True
-
-    }
-
-
-# ============================================================
-# API
-# ============================================================
-
-@app.post("/analyze-candles")
-def analyze_candles(request: MarketDataRequest):
-
-    if len(request.candles) < 30:
-        return {
-            "error": "Il faut au moins 30 bougies.",
-            "received": len(request.candles)
-        }
-
-    closes = [
-        candle.close
-        for candle in request.candles
-    ]
-
-    result = analyze_market(
-        closes,
-        request.timeframe
-    )
-
-    result["asset"] = request.asset
-    result["candles_used"] = len(closes)
-
-    return result
+# Mappage des devises avec Yahoo Finance
+TICKER_MAP = {
+    "EUR/USD OTC": "EURUSD=X",
+    "GBP/USD OTC": "GBPUSD=X",
+    "USD/JPY OTC": "USDJPY=X",
+    "AUD/USD OTC": "AUDUSD=X",
+    "USD/CAD OTC": "USDCAD=X",
+    "USD/CHF OTC": "USDCHF=X",
+    "NZD/USD OTC": "NZDUSD=X",
+    "EUR/GBP OTC": "EURGBP=X",
+    "EUR/JPY OTC": "EURJPY=X",
+    "GBP/JPY OTC": "GBPJPY=X",
+}
 
 @app.get("/")
-def home():
-
-    return {
-        "name": "𝐿𝑂𝐿𝑂𝐷𝐽𝑌 𝐴𝐼",
-        "version": "V6",
-        "status": "online",
-        "mode": "simulation"
-    }
-
+def read_root():
+    return {"status": "ok", "message": "Moteur LOLODJY AI en ligne"}
 
 @app.post("/analyze")
-def analyze(request: AnalysisRequest):
+def analyze(req: AnalyzeRequest):
+    ticker_symbol = TICKER_MAP.get(req.asset, "EURUSD=X")
+    
+    # 1. Récupération des cours en direct
+    try:
+        data = yf.download(tickers=ticker_symbol, period="1d", interval="1m")
+        if data.empty or len(data) < 30:
+            raise ValueError("Données marché insuffisantes.")
+        
+        if isinstance(data.columns, pd.MultiIndex):
+            data.columns = data.columns.get_level_values(0)
+            
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erreur marché : {str(e)}")
 
-    start_price = (
-        request.price
-        if request.price is not None
-        else 85.23383
-    )
+    # 2. Calculs des indicateurs (RSI, EMA, MACD)
+    df = data.copy()
+    df['RSI'] = ta.rsi(df['Close'], length=14)
+    df['EMA_FAST'] = ta.ema(df['Close'], length=9)
+    df['EMA_SLOW'] = ta.ema(df['Close'], length=21)
+    
+    macd_df = ta.macd(df['Close'])
+    df['MACD'] = macd_df['MACD_12_26_9']
+    df['MACD_SIGNAL'] = macd_df['MACDs_12_26_9']
 
-    prices = generate_simulated_prices(
-        start_price=start_price,
-        count=100
-    )
+    last_row = df.iloc[-1]
+    last_price = float(last_row['Close'])
+    rsi_val = float(last_row['RSI'])
+    ema_fast = float(last_row['EMA_FAST'])
+    ema_slow = float(last_row['EMA_SLOW'])
+    macd_val = float(last_row['MACD'])
+    macd_sig = float(last_row['MACD_SIGNAL'])
+    
+    support = float(df['Low'].tail(20).min())
+    resistance = float(df['High'].tail(20).max())
 
-    result = analyze_market(
-        prices,
-        request.timeframe
-    )
+    # 3. Calcul du score et du signal
+    score = 50
+    reasons = []
 
-    result["asset"] = request.asset
+    if ema_fast > ema_slow:
+        score += 15
+        trend = "HAUSSIÈRE"
+        reasons.append("EMA 9 > EMA 21")
+    else:
+        score -= 15
+        trend = "BAISSIÈRE"
+        reasons.append("EMA 9 < EMA 21")
 
-    return result
+    if rsi_val < 30:
+        score += 20
+        reasons.append("RSI en survente (< 30)")
+    elif rsi_val > 70:
+        score -= 20
+        reasons.append("RSI en surachat (> 70)")
+
+    if macd_val > macd_sig:
+        score += 15
+        macd_status = "BULLISH"
+    else:
+        score -= 15
+        macd_status = "BEARISH"
+
+    final_score = max(5, min(95, score))
+    
+    if final_score >= 65:
+        signal = "CALL"
+    elif final_score <= 35:
+        signal = "PUT"
+    else:
+        signal = "WAIT"
+
+    return {
+        "price": round(last_price, 5),
+        "trend": trend,
+        "rsi": round(rsi_val, 1),
+        "macd": macd_status,
+        "ema_fast": round(ema_fast, 5),
+        "ema_slow": round(ema_slow, 5),
+        "momentum": round(macd_val - macd_sig, 5),
+        "support": round(support, 5),
+        "resistance": round(resistance, 5),
+        "score": final_score,
+        "signal": signal,
+        "reason": " | ".join(reasons) if reasons else "Marché neutre"
+    }
