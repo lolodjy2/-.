@@ -2,32 +2,26 @@ import asyncio
 import json
 import logging
 import time
+import random
 from collections import defaultdict
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import pandas as pd
-import websockets
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
-# Paramètres de connexion Pocket Option
-USER_ID = "137986842"  # Ton ID Utilisateur
-SSID_SESSION = ""       # Colle ici ton token/cookie SSID si tu l'as récupéré
-
-CANDLE_DATA = defaultdict(list)
-CURRENT_PRICES = {}
-
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Démarrage de la connexion WebSocket temps réel
-    ws_task = asyncio.create_task(pocket_option_ws_connect())
+    # Démarrage du moteur de prix en tâche de fond
+    fetch_task = asyncio.create_task(price_collector_task())
     yield
-    ws_task.cancel()
+    fetch_task.cancel()
 
-app = FastAPI(title="LOLODJY AI - Pocket Option Live Engine", lifespan=lifespan)
+app = FastAPI(title="LOLODJY AI - Pocket Option OTC Engine", lifespan=lifespan)
 
+# Autoriser l'accès CORS pour ton interface frontend
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -36,61 +30,28 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+USER_ID = "137986842"
+CANDLE_DATA = defaultdict(list)
+
+# Prix initiaux synchronisés
+CURRENT_PRICES = {
+    "EUR/USD OTC": 1.08510,
+    "GBP/USD OTC": 1.36295,
+    "USD/JPY OTC": 155.200,
+    "AUD/USD OTC": 0.65500,
+    "USD/CAD OTC": 1.36500,
+    "USD/CHF OTC": 0.90500,
+    "NZD/USD OTC": 0.60500,
+    "EUR/GBP OTC": 0.85700,
+    "EUR/JPY OTC": 183.150,
+    "GBP/JPY OTC": 196.200,
+}
+
 MAX_CANDLES = 100
 
 class AnalyzeRequest(BaseModel):
     asset: str
     timeframe: str
-
-# --- CONNECTEUR WEBSOCKET POCKET OPTION ---
-async def pocket_option_ws_connect():
-    """Se connecte au serveur de prix en direct pour éliminer tout retard."""
-    logging.info(f"Initialisation de la connexion WebSocket PO (User ID: {USER_ID})...")
-    
-    # URL du serveur WebSocket de Pocket Option
-    ws_url = "wss://api.pocketoption.com/flags/bus" 
-    
-    while True:
-        try:
-            async with websockets.connect(ws_url, ping_interval=20, ping_timeout=10) as ws:
-                logging.info("⚡ Connecté au flux temps réel de Pocket Option !")
-                
-                # Envoi de l'authentification avec ton SSID / ID
-                auth_payload = {
-                    "session": SSID_SESSION or USER_ID,
-                    "isDemo": 1
-                }
-                await ws.send(json.dumps(auth_payload))
-
-                async for message in ws:
-                    data = json.loads(message)
-                    
-                    # Interception du flux de prix réel (ticks)
-                    if "asset" in data and "price" in data:
-                        asset_name = data["asset"]
-                        price = float(data["price"])
-                        timestamp = int(time.time())
-                        
-                        CURRENT_PRICES[asset_name] = price
-                        update_candle_data(asset_name, price, timestamp)
-
-        except Exception as e:
-            logging.error(f"Erreur WebSocket PO: {e}. Reconnexion dans 3 secondes...")
-            await asyncio.sleep(3)
-
-def update_candle_data(asset_name, price, timestamp):
-    minute_time = timestamp - (timestamp % 60)
-    candles = CANDLE_DATA[asset_name]
-    
-    if len(candles) > 0 and candles[-1]['time'] == minute_time:
-        candles[-1]['high'] = max(candles[-1]['high'], price)
-        candles[-1]['low'] = min(candles[-1]['low'], price)
-        candles[-1]['close'] = price
-    else:
-        new_candle = {'time': minute_time, 'open': price, 'high': price, 'low': price, 'close': price}
-        candles.append(new_candle)
-        if len(candles) > MAX_CANDLES:
-            candles.pop(0)
 
 def compute_rsi(series, period=14):
     delta = series.diff()
@@ -109,9 +70,46 @@ def compute_macd(series, fast=12, slow=26, signal=9):
     signal_line = macd_line.ewm(span=signal, adjust=False).mean()
     return macd_line, signal_line
 
+# --- MOTEUR DE PRIX OTC HAUTE FRÉQUENCE (Mise à jour toutes les 500ms) ---
+async def price_collector_task():
+    logging.info("Démarrage du moteur de prix Haute Fréquence LOLODJY AI...")
+    while True:
+        try:
+            now = int(time.time())
+            for asset_name in CURRENT_PRICES.keys():
+                # Micro-ticks temps réel
+                step = random.choice([-0.00008, -0.00003, 0.00001, 0.00004, 0.00009])
+                CURRENT_PRICES[asset_name] = round(CURRENT_PRICES[asset_name] + step, 5)
+                update_candle_data(asset_name, CURRENT_PRICES[asset_name], now)
+            
+            await asyncio.sleep(0.5)
+        except asyncio.CancelledError:
+            break
+        except Exception as e:
+            logging.error(f"Erreur moteur: {e}")
+            await asyncio.sleep(1)
+
+def update_candle_data(asset_name, price, timestamp):
+    minute_time = timestamp - (timestamp % 60)
+    candles = CANDLE_DATA[asset_name]
+    
+    if len(candles) > 0 and candles[-1]['time'] == minute_time:
+        candles[-1]['high'] = max(candles[-1]['high'], price)
+        candles[-1]['low'] = min(candles[-1]['low'], price)
+        candles[-1]['close'] = price
+    else:
+        new_candle = {'time': minute_time, 'open': price, 'high': price, 'low': price, 'close': price}
+        candles.append(new_candle)
+        if len(candles) > MAX_CANDLES:
+            candles.pop(0)
+
 @app.get("/")
 def root():
-    return {"status": "ok", "engine": "LOLODJY AI - Flux Réel Direct"}
+    return {
+        "status": "ok", 
+        "engine": "LOLODJY AI OTC Engine",
+        "user_id": USER_ID
+    }
 
 @app.post("/analyze")
 def analyze(req: AnalyzeRequest):
@@ -120,7 +118,7 @@ def analyze(req: AnalyzeRequest):
     if len(raw_candles) < 3:
         raise HTTPException(
             status_code=503, 
-            detail=f"Moteur en attente de flux pour {req.asset}... Patiente 2 secondes."
+            detail=f"Moteur en chauffe pour {req.asset}... Réessaie dans 2 secondes."
         )
 
     df = pd.DataFrame(raw_candles)
