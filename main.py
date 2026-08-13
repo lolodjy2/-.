@@ -3,14 +3,21 @@ import json
 import logging
 import time
 from collections import defaultdict
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import pandas as pd
-import pandas_ta as ta
-import websockets
 
-app = FastAPI(title="LOLODJY AI - Pocket Option OTC Engine")
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    ws_task = asyncio.create_task(connect_po_websocket())
+    yield
+    ws_task.cancel()
+
+app = FastAPI(title="LOLODJY AI - Pocket Option OTC Engine", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -20,8 +27,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Stockage en mémoire des bougies construites via WebSocket
-# Structure: CANDLE_DATA[asset] = [ { 'time': timestamp, 'open': x, 'high': x, 'low': x, 'close': x }, ... ]
 CANDLE_DATA = defaultdict(list)
 MAX_CANDLES = 100
 
@@ -29,7 +34,6 @@ class AnalyzeRequest(BaseModel):
     asset: str
     timeframe: str
 
-# Mappage des noms d'actifs vers les symboles Pocket Option
 PO_ASSET_MAP = {
     "EUR/USD OTC": "EURUSD_otc",
     "GBP/USD OTC": "GBPUSD_otc",
@@ -43,11 +47,28 @@ PO_ASSET_MAP = {
     "GBP/JPY OTC": "GBPJPY_otc",
 }
 
-# --- GESTION DU WEBSOCKET POCKET OPTION ---
 PO_WS_URL = "wss://api-fin.po.market/socket.io/?EIO=4&transport=websocket"
 
+# --- FONCTIONS DE CALCULS TECHNIQUES MAISON ---
+def compute_rsi(series, period=14):
+    delta = series.diff()
+    gain = (delta.where(delta > 0, 0)).rolling(window=period).mean()
+    loss = (-delta.where(delta < 0, 0)).rolling(window=period).mean()
+    rs = gain / loss
+    return 100 - (100 / (1 + rs))
+
+def compute_ema(series, period):
+    return series.ewm(span=period, adjust=False).mean()
+
+def compute_macd(series, fast=12, slow=26, signal=9):
+    ema_fast = compute_ema(series, fast)
+    ema_slow = compute_ema(series, slow)
+    macd_line = ema_fast - ema_slow
+    signal_line = macd_line.ewm(span=signal, adjust=False).mean()
+    return macd_line, signal_line
+
+# --- WEBSOCKET ---
 async def connect_po_websocket():
-    """Tâche de fond qui reste connectée au WebSocket Pocket Option"""
     while True:
         try:
             async with websockets.connect(
@@ -58,65 +79,49 @@ async def connect_po_websocket():
                 }
             ) as ws:
                 logging.info("Connecté au WebSocket Pocket Option !")
-                
-                # Handshake initial Socket.io
                 await ws.send('40')
                 
                 async for message in ws:
-                    # Traitement des pings Socket.io pour garder la connexion active
                     if message == "2":
                         await ws.send("3")
                         continue
                     
-                    # Interception des données de prix
                     if message.startswith('42'):
                         try:
                             data = json.loads(message[2:])
-                            event_name = data[0]
-                            
-                            # Réception des ticks de prix
-                            if event_name == "updateStream":
-                                stream_data = data[1]
-                                symbol = stream_data.get("asset")
-                                price = float(stream_data.get("price"))
-                                timestamp = int(stream_data.get("time", time.time()))
-                                
-                                # On met à jour ou crée la dernière bougie 1m
-                                update_candle_data(symbol, price, timestamp)
-                                
-                        except Exception as e:
+                            if isinstance(data, list) and len(data) > 1:
+                                event_name = data[0]
+                                if event_name == "updateStream":
+                                    stream_data = data[1]
+                                    symbol = stream_data.get("asset")
+                                    price_raw = stream_data.get("price")
+                                    timestamp_raw = stream_data.get("time")
+                                    
+                                    if symbol and price_raw is not None:
+                                        price = float(price_raw)
+                                        timestamp = int(timestamp_raw) if timestamp_raw else int(time.time())
+                                        update_candle_data(symbol, price, timestamp)
+                        except Exception:
                             pass
+        except asyncio.CancelledError:
+            break
         except Exception as e:
-            logging.error(f"Erreur WebSocket PO: {e}. Reconnexion dans 5s...")
+            logging.error(f"Erreur WS: {e}. Reconnexion dans 5s...")
             await asyncio.sleep(5)
 
 def update_candle_data(symbol, price, timestamp):
-    """Agrège les ticks en bougies de 1 minute"""
     minute_time = timestamp - (timestamp % 60)
     candles = CANDLE_DATA[symbol]
     
     if len(candles) > 0 and candles[-1]['time'] == minute_time:
-        # Mise à jour de la bougie en cours
         candles[-1]['high'] = max(candles[-1]['high'], price)
         candles[-1]['low'] = min(candles[-1]['low'], price)
         candles[-1]['close'] = price
     else:
-        # Nouvelle bougie
-        new_candle = {
-            'time': minute_time,
-            'open': price,
-            'high': price,
-            'low': price,
-            'close': price
-        }
+        new_candle = {'time': minute_time, 'open': price, 'high': price, 'low': price, 'close': price}
         candles.append(new_candle)
         if len(candles) > MAX_CANDLES:
             candles.pop(0)
-
-@app.on_event("startup")
-async def startup_event():
-    # Lancement du WebSocket en tâche de fond dès le démarrage
-    asyncio.create_task(connect_po_websocket())
 
 @app.get("/")
 def root():
@@ -127,24 +132,19 @@ def analyze(req: AnalyzeRequest):
     po_symbol = PO_ASSET_MAP.get(req.asset, "EURUSD_otc")
     raw_candles = CANDLE_DATA.get(po_symbol, [])
 
-    # Si pas encore assez de bougies capturées par le WS
     if len(raw_candles) < 20:
         raise HTTPException(
             status_code=503, 
-            detail=f"Capture du flux OTC en cours pour {req.asset}... Réessaie dans quelques secondes."
+            detail=f"Capture du flux OTC en cours pour {req.asset} ({len(raw_candles)}/20)... Réessaie dans quelques secondes."
         )
 
-    # Convertir en DataFrame pour pandas_ta
     df = pd.DataFrame(raw_candles)
     
-    # Calculs des indicateurs sur le VRAI flux OTC
-    df['RSI'] = ta.rsi(df['close'], length=14)
-    df['EMA_FAST'] = ta.ema(df['close'], length=9)
-    df['EMA_SLOW'] = ta.ema(df['close'], length=21)
-    
-    macd_df = ta.macd(df['close'])
-    df['MACD'] = macd_df['MACD_12_26_9']
-    df['MACD_SIGNAL'] = macd_df['MACDs_12_26_9']
+    # Indicateurs
+    df['RSI'] = compute_rsi(df['close'], 14)
+    df['EMA_FAST'] = compute_ema(df['close'], 9)
+    df['EMA_SLOW'] = compute_ema(df['close'], 21)
+    df['MACD'], df['MACD_SIGNAL'] = compute_macd(df['close'])
 
     last_row = df.iloc[-1]
     last_price = float(last_row['close'])
@@ -157,25 +157,24 @@ def analyze(req: AnalyzeRequest):
     support = float(df['low'].tail(20).min())
     resistance = float(df['high'].tail(20).max())
 
-    # Calcul du signal
     score = 50
     reasons = []
 
     if ema_fast > ema_slow:
         score += 15
         trend = "HAUSSIÈRE"
-        reasons.append("EMA 9 > EMA 21 (OTC)")
+        reasons.append("EMA 9 > EMA 21")
     else:
         score -= 15
         trend = "BAISSIÈRE"
-        reasons.append("EMA 9 < EMA 21 (OTC)")
+        reasons.append("EMA 9 < EMA 21")
 
     if rsi_val < 30:
         score += 20
-        reasons.append("RSI Survente OTC (<30)")
+        reasons.append("RSI Survente (<30)")
     elif rsi_val > 70:
         score -= 20
-        reasons.append("RSI Surachat OTC (>70)")
+        reasons.append("RSI Surachat (>70)")
 
     if macd_val > macd_sig:
         score += 15
