@@ -1,4 +1,4 @@
-const API_BASE_URL = "";
+const API_BASE_URL = "/.netlify/functions";
 
 const timeframes=["S3","S5","S10","S15","S20","S30","S40","S50","M1","M2","M3","M5","M10","M15","M30","M60","H1","H4","H12","H24","D1","D7","D30"];
 let selectedTF="S3",total=0,calls=0,puts=0,waits=0;
