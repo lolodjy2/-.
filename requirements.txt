@@ -1,6 +1,7 @@
 fastapi
 uvicorn
-mangum
-yfinance
+websockets
 pandas
 pandas_ta
+pydantic
+
